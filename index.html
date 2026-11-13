@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lernplan</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#eef0ec" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12161a" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lernplan">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one narrow column like a lab notebook; day groups ruled by thin lines, module colour as a margin stripe, numbers in mono. */
+:root {
+  --bg: #eef0ec;
+  --surface: #ffffff;
+  --ink: #1a2024;
+  --muted: #5f6a70;
+  --line: #d6dbd5;
+  --accent: #2550c4;
+  --accent-soft: #e3e9fa;
+  --late: #b8402a;
+  --late-soft: #f8e6e1;
+  --ok: #2b7d52;
+  --ok-soft: #e1f1e7;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161a; --surface: #1b2126; --ink: #e8ece9; --muted: #98a3a8; --line: #2c343a;
+    --accent: #7d9dff; --accent-soft: #23304f; --late: #ff8a70; --late-soft: #3a2420; --ok: #6fd39c; --ok-soft: #1d3428;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161a; --surface: #1b2126; --ink: #e8ece9; --muted: #98a3a8; --line: #2c343a;
+  --accent: #7d9dff; --accent-soft: #23304f; --late: #ff8a70; --late-soft: #3a2420; --ok: #6fd39c; --ok-soft: #1d3428;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--font-body); -webkit-font-smoothing: antialiased; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: .92em; }
+
+.app { max-width: 760px; margin: 0 auto; padding: calc(12px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) calc(96px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); display: flex; flex-direction: column; gap: 18px; }
+header.top { display: flex; flex-direction: column; gap: 10px; }
+.top-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+h1 { font-size: 1.5rem; line-height: 1.2; margin: 0; font-weight: 700; letter-spacing: -.01em; text-wrap: balance; }
+.sub { color: var(--muted); font-size: .9rem; }
+.status { font-size: .8rem; color: var(--muted); background: none; border: 0; padding: 6px 0; text-decoration: underline; text-underline-offset: 3px; }
+a { color: var(--accent); }
+.status.warn { color: var(--late); }
+
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: var(--surface); border-top: 1px solid var(--line); display: flex; justify-content: center; padding-bottom: env(safe-area-inset-bottom); }
+nav.tabs .inner { display: grid; grid-template-columns: repeat(5, 1fr); width: 100%; max-width: 760px; }
+nav.tabs a { text-decoration: none; color: var(--muted); font-size: .78rem; font-weight: 500; padding: 10px 4px 12px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+nav.tabs a svg { width: 22px; height: 22px; }
+nav.tabs a[aria-current="page"] { color: var(--accent); }
+@media (min-width: 820px) {
+  nav.tabs a { flex-direction: row; justify-content: center; gap: 8px; font-size: .9rem; padding: 14px 6px; }
+  nav.tabs a svg { width: 18px; height: 18px; }
+}
+
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); font-size: .82rem; white-space: nowrap; }
+.chip b { font-weight: 600; }
+.chip.late { background: var(--late-soft); border-color: transparent; color: var(--late); }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+
+.summary { display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.summary .big { font-size: 1.05rem; font-weight: 600; }
+.bar { grid-column: 1 / -1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--ok); border-radius: 3px; }
+
+section.group { display: flex; flex-direction: column; }
+.group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 0 2px 6px; border-bottom: 1px solid var(--line); }
+.group-head h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; margin: 0; color: var(--muted); font-weight: 600; }
+.group-head.today h2 { color: var(--accent); }
+.group-head.late h2 { color: var(--late); }
+.group-head .meta { font-size: .8rem; color: var(--muted); }
+.empty { color: var(--muted); font-size: .9rem; padding: 12px 2px; }
+.link-btn { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 600; font-size: .82rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+li.item { border-bottom: 1px solid var(--line); }
+.row { display: grid; grid-template-columns: 44px 1fr; align-items: start; min-height: 52px; }
+.check { width: 44px; height: 48px; display: grid; place-items: center; background: none; border: 0; padding: 0; }
+.check span { width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--muted); display: grid; place-items: center; transition: background .15s, border-color .15s; }
+.check:disabled { cursor: default; opacity: .6; }
+.check[aria-pressed="true"] span { background: var(--ok); border-color: var(--ok); }
+.check[aria-pressed="true"] span::after { content: ""; width: 10px; height: 5px; border: 2.5px solid #fff; border-top: 0; border-right: 0; transform: translateY(-1px) rotate(-45deg); }
+.body { background: none; border: 0; text-align: left; padding: 11px 4px 11px 0; display: flex; flex-direction: column; gap: 3px; min-width: 0; border-left: 3px solid var(--mc, var(--line)); padding-left: 10px; margin: 6px 0; }
+.title { font-weight: 500; overflow-wrap: anywhere; }
+li.done .title { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--muted); }
+.meta-line { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: .8rem; color: var(--muted); }
+.meta-line .code { font-weight: 600; color: var(--ink); }
+.tag { font-size: .72rem; font-weight: 600; padding: 1px 7px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
+.tag.hi { background: var(--late-soft); color: var(--late); }
+.tag.exam { background: var(--ink); color: var(--surface); }
+li.exam .title { font-weight: 700; }
+.detail { padding: 0 6px 14px 54px; display: flex; flex-direction: column; gap: 10px; }
+.detail p { margin: 0; color: var(--muted); font-size: .9rem; max-width: 62ch; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 7px 12px; font-size: .85rem; font-weight: 500; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.danger { color: var(--late); }
+input[type="date"], input[type="text"], input[type="number"], select { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 6px 10px; font-size: .9rem; min-height: 36px; }
+
+.weeknav { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.weeknav .label { font-weight: 600; }
+.day-cap { font-size: .75rem; color: var(--muted); font-weight: 400; text-transform: none; letter-spacing: 0; }
+
+.cards { display: grid; gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.card-head { width: 100%; background: none; border: 0; text-align: left; padding: 14px 16px; display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; border-left: 5px solid var(--mc); }
+.card-head .name { font-weight: 600; }
+.card-head .count { font-size: .85rem; color: var(--muted); text-align: right; }
+.card-head .bar { margin-top: 4px; }
+.card ul.items { border-top: 1px solid var(--line); padding: 0 8px; }
+.card li.item:last-child { border-bottom: 0; }
+
+.timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.timeline li { display: grid; grid-template-columns: 74px 1fr auto; gap: 12px; align-items: center; padding: 12px 2px; border-bottom: 1px solid var(--line); }
+.timeline .when { font-family: var(--font-num); font-size: .85rem; color: var(--muted); }
+.timeline .left { font-family: var(--font-num); font-weight: 500; text-align: right; }
+.timeline li.past { opacity: .55; }
+.timeline .what { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.timeline .what b { font-weight: 600; }
+
+.fab { position: fixed; right: max(18px, env(safe-area-inset-right)); bottom: calc(78px + env(safe-area-inset-bottom)); z-index: 6; width: 54px; height: 54px; border-radius: 16px; background: var(--accent); color: #fff; border: 0; box-shadow: 0 6px 18px rgba(20,40,90,.28); display: grid; place-items: center; }
+.fab svg { width: 26px; height: 26px; }
+@media (min-width: 820px) { .fab { right: calc(50% - 380px + 16px); } }
+
+.sheet-bg { position: fixed; inset: 0; background: rgba(10,14,18,.45); z-index: 10; display: flex; align-items: flex-end; justify-content: center; }
+.sheet { background: var(--surface); width: 100%; max-width: 520px; border-radius: 16px 16px 0 0; padding: 18px 18px calc(18px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; max-height: 90%; overflow: auto; }
+@media (min-width: 620px) { .sheet-bg { align-items: center; } .sheet { border-radius: 16px; } }
+.sheet h2 { margin: 0; font-size: 1.1rem; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: .8rem; color: var(--muted); font-weight: 500; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.notice { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; color: var(--muted); }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(150px + env(safe-area-inset-bottom)); background: var(--ink); color: var(--surface); padding: 9px 14px; border-radius: 10px; font-size: .85rem; z-index: 20; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="top">
+    <div class="top-row">
+      <h1 id="h1">Lernplan</h1>
+      <button class="status" id="status" data-act="sync">Lade Lernplan …</button>
+    </div>
+    <div class="chips" id="examChips"></div>
+  </header>
+  <main id="main"><div class="notice">Lernplan wird geladen.</div></main>
+</div>
+
+<nav class="tabs" aria-label="Ansichten"><div class="inner">
+  <a href="#heute" data-v="heute"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/><circle cx="12" cy="15" r="1.6" fill="currentColor"/></svg>Heute</a>
+  <a href="#woche" data-v="woche"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/><path d="M8 4v4M14 10v4M18 16v4"/></svg>Woche</a>
+  <a href="#module" data-v="module"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>Module</a>
+  <a href="#klausuren" data-v="klausuren"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10.5a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 .5-.5z"/><path d="M14 3.5V8h4M9 13h6M9 17h4"/></svg>Klausuren</a>
+  <a href="#archiv" data-v="archiv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="4.5" width="17" height="4" rx="1"/><path d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5M10 12.5h4"/></svg>Archiv</a>
+</div></nav>
+
+<button class="fab" id="fab" aria-label="Aufgabe hinzufügen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></button>
+<div id="overlay"></div>
+
+<script>
+(function () {
+  "use strict";
+  let ARCHIVE = [];
+  const S = { entries: new Map(), modules: new Map(), view: "heute", week: 0, open: null, openCards: new Set(), ready: { e: false, m: false }, base: new Map(), ov: {} };
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  // ---------- dates (device local time) ----------
+  const pad = (n) => String(n).padStart(2, "0");
+  const isoOf = (d) => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  const parse = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+  const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return isoOf(d); };
+  const today = () => isoOf(new Date());
+  const diff = (a, b) => Math.round((parse(b) - parse(a)) / 864e5);
+  const fmtLong = new Intl.DateTimeFormat("de-DE", { weekday: "long", day: "numeric", month: "long" });
+  const fmtShort = new Intl.DateTimeFormat("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
+  const fmtDM = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" });
+  const hrs = (h) => (h ? String(h).replace(".", ",") + " h" : "");
+  const hrs0 = (h) => String(h).replace(".", ",") + " h";
+  const sumH = (list) => list.reduce((a, e) => a + (Number(e.hours) || 0), 0);
+  function relDay(s) {
+    const n = diff(today(), s);
+    if (n === 0) return "heute"; if (n === 1) return "morgen"; if (n === -1) return "gestern";
+    if (n > 1) return "in " + n + " Tagen"; return "vor " + (-n) + " Tagen";
+  }
+
+  // ---------- data helpers ----------
+  const mod = (id) => S.modules.get(id);
+  const isArchived = (e) => e.archived || (mod(e.moduleId) && mod(e.moduleId).archived);
+  const active = () => [...S.entries.values()].filter((e) => !isArchived(e));
+  const byDate = (a, b) => (a.date || "9999").localeCompare(b.date || "9999") || (a.type === "Klausur" ? -1 : 0) - (b.type === "Klausur" ? -1 : 0) || String(a.title).localeCompare(String(b.title), "de", { numeric: true });
+  const exams = () => active().filter((e) => e.type === "Klausur").sort(byDate);
+
+  // ---------- local state + sync ----------
+  const LS = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+    del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+  };
+  function rebuild() {
+    const m = new Map();
+    for (const [id, b] of S.base) {
+      const o = S.ov[id];
+      if (!o) { m.set(id, b); continue; }
+      const p = {}; ["done", "doneAt", "date"].forEach((k) => { if (k in o) p[k] = o[k]; });
+      m.set(id, Object.assign({}, b, p));
+    }
+    for (const id in S.ov) { const o = S.ov[id]; if (!S.base.has(id) && o.title && !o.del) m.set(id, Object.assign({}, o, { id })); }
+    S.entries = m;
+  }
+  function saveLocal() { LS.set("lp-ov", JSON.stringify(S.ov)); }
+  function write(id, patch) {
+    S.ov[id] = Object.assign({}, S.ov[id], patch, { u: Date.now() });
+    saveLocal(); rebuild(); render(); queueSync();
+  }
+  function writeMany(ids, patchFn) { ids.forEach((id) => { S.ov[id] = Object.assign({}, S.ov[id], patchFn(id), { u: Date.now() }); }); saveLocal(); rebuild(); render(); queueSync(); }
+
+  const API = "https://api.github.com", FILE = "lernplan-sync.json";
+  let syncing = false, again = false, syncT;
+  function setStatus(txt, warn) { const s = $("#status"); s.textContent = txt; s.classList.toggle("warn", !!warn); }
+  function queueSync() { if (!LS.get("lp-token")) return; setStatus("Speichert …"); clearTimeout(syncT); syncT = setTimeout(sync, 1200); }
+  async function gh(path, opt) {
+    const r = await fetch(API + path, Object.assign({ cache: "no-store", headers: { Authorization: "Bearer " + LS.get("lp-token"), Accept: "application/vnd.github+json", "Content-Type": "application/json" } }, opt));
+    if (!r.ok) { const e = new Error("http " + r.status); e.status = r.status; throw e; }
+    return r.json();
+  }
+  async function sync() {
+    if (!LS.get("lp-token")) { setStatus("Nur auf diesem Gerät · Sync einrichten", true); return; }
+    if (syncing) { again = true; return; }
+    syncing = true;
+    try {
+      let id = LS.get("lp-gist");
+      if (!id) {
+        const list = await gh("/gists?per_page=100");
+        const g = list.find((x) => x.files && x.files[FILE]);
+        if (g) id = g.id;
+        else id = (await gh("/gists", { method: "POST", body: JSON.stringify({ description: "Lernplan-Sync", public: false, files: { [FILE]: { content: JSON.stringify({ v: 1, e: S.ov }) } } }) })).id;
+        LS.set("lp-gist", id);
+      }
+      const g = await gh("/gists/" + id);
+      const f = g.files && g.files[FILE];
+      let remote = {};
+      if (f) {
+        let txt = f.content;
+        if (f.truncated) txt = await (await fetch(f.raw_url, { cache: "no-store" })).text();
+        try { remote = JSON.parse(txt).e || {}; } catch (e) {}
+      }
+      let pulled = false, push = false;
+      for (const k in remote) { if (!S.ov[k] || (remote[k].u || 0) > (S.ov[k].u || 0)) { S.ov[k] = remote[k]; pulled = true; } }
+      for (const k in S.ov) { if (!remote[k] || (S.ov[k].u || 0) > (remote[k].u || 0)) { push = true; break; } }
+      if (pulled) { saveLocal(); rebuild(); render(); }
+      if (push) await gh("/gists/" + id, { method: "PATCH", body: JSON.stringify({ files: { [FILE]: { content: JSON.stringify({ v: 1, e: S.ov }) } } }) });
+      setStatus("Synchronisiert");
+    } catch (err) {
+      if (err.status === 401 || err.status === 403) setStatus("Token ungültig · neu einrichten", true);
+      else if (err.status === 404) { LS.del("lp-gist"); setStatus("Sync-Datei fehlt · erneut tippen", true); }
+      else setStatus("Offline · lokal gespeichert", true);
+    }
+    syncing = false;
+    if (again) { again = false; sync(); }
+  }
+  function openSync() {
+    const has = !!LS.get("lp-token");
+    $("#overlay").innerHTML = '<div class="sheet-bg" data-close="1"><form class="sheet" id="syncForm" aria-labelledby="syncTitle"><h2 id="syncTitle">Synchronisierung</h2>' +
+      '<p class="sub" style="margin:0">Damit iPhone und Mac denselben Stand zeigen, speichert die App deine Häkchen in einem geheimen Gist in deinem GitHub-Konto. Dafür brauchst du einmal ein Token mit dem Recht „gist“ und gibst es auf beiden Geräten ein.</p>' +
+      '<p class="sub" style="margin:0"><a href="https://github.com/settings/tokens/new?scopes=gist&description=Lernplan-Sync" target="_blank" rel="noopener">Token bei GitHub erstellen</a></p>' +
+      '<div class="field"><label for="f-token">GitHub-Token</label><input type="password" id="f-token" autocomplete="off" placeholder="' + (has ? "Token ist gespeichert" : "ghp_…") + '"></div>' +
+      '<div class="actions"><button type="submit" class="btn primary">' + (has ? "Jetzt synchronisieren" : "Speichern und synchronisieren") + '</button>' +
+      (has ? '<button type="button" class="btn danger" id="syncOff">Sync auf diesem Gerät trennen</button>' : "") + '<button type="button" class="btn" data-close="1">Schließen</button></div></form></div>';
+    $("#syncForm").addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const v = $("#f-token").value.trim();
+      if (v) { LS.set("lp-token", v); LS.del("lp-gist"); }
+      $("#overlay").innerHTML = "";
+      if (LS.get("lp-token")) { setStatus("Synchronisiert …"); sync(); }
+    });
+    const off = $("#syncOff");
+    if (off) off.addEventListener("click", () => { LS.del("lp-token"); LS.del("lp-gist"); $("#overlay").innerHTML = ""; sync(); });
+  }
+
+  let toastT;
+  function toast(msg) {
+    clearTimeout(toastT);
+    let t = document.querySelector(".toast");
+    if (!t) { t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+    t.textContent = msg;
+    toastT = setTimeout(() => t.remove(), 2600);
+  }
+
+  // ---------- rendering ----------
+  function itemHTML(e, opts = {}) {
+    const m = mod(e.moduleId);
+    const t = today();
+    const late = !e.done && !e.ro && !isArchived(e) && e.date && e.date < t && e.type !== "Klausur";
+    const meta = [];
+    meta.push('<span class="code">' + esc(m ? m.code : "Allgemein") + "</span>");
+    if (opts.showDate && e.date) meta.push('<span class="num">' + esc(fmtShort.format(parse(e.date))) + "</span>");
+    if (!e.date) meta.push("<span>ohne Datum</span>");
+    if (e.time) meta.push('<span class="num">' + esc(e.time) + "</span>");
+    if (e.hours && e.type !== "Klausur") meta.push('<span class="num">' + hrs(e.hours) + "</span>");
+    if (late && !opts.inLate) meta.push('<span style="color:var(--late)">überfällig</span>');
+    let tag = "";
+    if (e.type === "Klausur") tag = '<span class="tag exam">Klausur</span>';
+    else if (e.type === "Abgabe" || e.type === "Offen") tag = '<span class="tag hi">' + esc(e.type === "Offen" ? "Klären" : "Frist") + "</span>";
+    else if (e.type === "Wiederholung") tag = '<span class="tag">Wiederholung</span>';
+    const open = S.open === e.id;
+    const cls = ["item", e.done ? "done" : "", e.type === "Klausur" ? "exam" : ""].join(" ");
+    let html = '<li class="' + cls + '" data-id="' + esc(e.id) + '">' +
+      '<div class="row">' +
+      '<button class="check" data-act="toggle"' + (e.ro ? " disabled" : "") + ' aria-pressed="' + (e.done ? "true" : "false") + '" aria-label="' + esc(e.title) + (e.done ? " als offen markieren" : " abhaken") + '"><span></span></button>' +
+      '<button class="body" data-act="open" aria-expanded="' + open + '" style="--mc:' + esc(m ? m.color : "var(--line)") + '">' +
+      '<span class="title">' + esc(e.title) + "</span>" +
+      '<span class="meta-line">' + meta.join("") + tag + "</span></button></div>";
+    if (open) {
+      html += '<div class="detail">' + ((e.details || hint(e)) ? "<p>" + esc(e.details || hint(e)) + "</p>" : "") +
+        '<div class="actions">' +
+        (e.type !== "Klausur" && !e.done ? '<button class="btn" data-act="today">Auf heute</button><button class="btn" data-act="plus1">Einen Tag später</button>' : "") +
+        '<label class="sub" for="d-' + esc(e.id) + '">Datum</label><input type="date" id="d-' + esc(e.id) + '" data-act="date" value="' + esc(e.date || "") + '">' +
+        (e.origin === "user" ? '<button class="btn danger" data-act="delete">Löschen</button>' : "") +
+        "</div></div>";
+    }
+    return html + "</li>";
+  }
+  function hint(e) {
+    const id = e.id || "";
+    if (id.indexOf("review-") === 0) return "Karteikarten der Woche wiederholen, Fehlerliste ergänzen. Was diese Woche liegen geblieben ist, heute nachholen.";
+    if (id.indexOf("-block-") > 0) return "Platzhalter: Thema nach der Umfangsklärung eintragen. Aktiv lernen: Zusammenfassung schreiben, Karteikarten, Aufgaben rechnen.";
+    if (id.indexOf("emf-past-exam") === 0) return "Unter Klausurbedingungen mit Uhr rechnen, danach korrigieren. Datum vorläufig, bis der EMF-Klausurtermin feststeht.";
+    if (id.indexOf("-past-exam-") > 0) return "Unter Klausurbedingungen mit Uhr rechnen, danach korrigieren und Fehler in die Fehlerliste schreiben.";
+    if (id.indexOf("-exercise-") > 0) return "Erst ohne Lösung rechnen, dann vergleichen. Fehler in die Fehlerliste schreiben.";
+    return "";
+  }
+  const list = (arr, opts) => '<ul class="items">' + arr.map((e) => itemHTML(e, opts)).join("") + "</ul>";
+  function group(title, arr, opts = {}) {
+    const open = arr.filter((e) => !e.done && e.type !== "Klausur");
+    const metaTxt = opts.meta != null ? opts.meta : (arr.length ? (open.length ? open.length + " offen · " + hrs(sumH(open)) : "alles erledigt") : "");
+    return '<section class="group"><div class="group-head ' + (opts.cls || "") + '"><h2>' + title + '</h2><span class="meta">' + metaTxt + (opts.action || "") + "</span></div>" +
+      (arr.length ? list(arr, opts) : '<div class="empty">' + (opts.empty || "Nichts geplant.") + "</div>") + "</section>";
+  }
+
+  function renderHeader() {
+    const t = today();
+    $("#h1").textContent = fmtLong.format(parse(t));
+    const next = exams().filter((e) => e.date >= t).slice(0, 3);
+    $("#examChips").innerHTML = next.map((e) => {
+      const m = mod(e.moduleId); const n = diff(t, e.date);
+      return '<span class="chip"><span class="dot" style="background:' + esc(m ? m.color : "var(--muted)") + '"></span><b>' + esc(m ? m.code : "") + '</b><span class="num">' + (n === 0 ? "heute" : n + " T") + "</span></span>";
+    }).join("") + (() => {
+      const late = active().filter((e) => !e.done && e.date && e.date < t && e.type !== "Klausur").length;
+      return late ? '<span class="chip late"><b>' + late + "</b> überfällig</span>" : "";
+    })();
+  }
+
+  function viewHeute() {
+    const t = today(); const a = active();
+    const late = a.filter((e) => !e.done && e.date && e.date < t && e.type !== "Klausur").sort(byDate);
+    const tod = a.filter((e) => e.date === t).sort((x, y) => x.done - y.done || byDate(x, y));
+    const todOpen = tod.filter((e) => e.type !== "Klausur");
+    const doneH = sumH(todOpen.filter((e) => e.done)), allH = sumH(todOpen);
+    const pct = allH ? Math.round((doneH / allH) * 100) : 0;
+    let h = '<div class="summary"><div><div class="big">' + (todOpen.length ? todOpen.filter((e) => e.done).length + " von " + todOpen.length + " erledigt" : "Heute ist nichts geplant") + '</div><div class="sub">' + (todOpen.length ? '<span class="num">' + hrs0(doneH) + "</span> von <span class=\"num\">" + hrs(allH) + "</span> Lernzeit" : (parse(t).getDay() === 0 ? "Sonntag ist Puffertag." : "Nimm dir etwas aus „Als Nächstes“ vor.")) + '</div></div><div class="num" style="font-size:1.4rem">' + pct + '%</div><div class="bar"><i style="width:' + pct + '%"></i></div></div>';
+    if (late.length) h += group("Überfällig", late, { cls: "late", showDate: true, inLate: true, meta: late.length + " · " + hrs(sumH(late)) + " ", action: ' <button class="link-btn" data-act="lateToToday">Alle auf heute</button>' });
+    h += group("Heute", tod, { cls: "today", empty: "Keine Aufgaben für heute." });
+    for (let i = 1; i <= 3; i++) {
+      const d = addDays(t, i);
+      const arr = a.filter((e) => e.date === d).sort(byDate);
+      h += group(esc(i === 1 ? "Morgen" : fmtShort.format(parse(d))), arr, { empty: parse(d).getDay() === 0 ? "Puffertag." : "Nichts geplant." });
+    }
+    const undated = a.filter((e) => !e.date && !e.done);
+    if (undated.length) h += group("Ohne Datum", undated, {});
+    return h;
+  }
+
+  function viewWoche() {
+    const t = today(); const base = parse(t); const dow = (base.getDay() + 6) % 7;
+    const mon = addDays(t, -dow + S.week * 7); const sun = addDays(mon, 6);
+    const a = active();
+    let h = '<div class="weeknav"><button class="btn" data-act="weekPrev" aria-label="Vorherige Woche">‹ Zurück</button><div class="label num">' + esc(fmtDM.format(parse(mon))) + " bis " + esc(fmtDM.format(parse(sun))) + '</div><button class="btn" data-act="weekNext" aria-label="Nächste Woche">Weiter ›</button></div>';
+    const wk = a.filter((e) => e.date >= mon && e.date <= sun && e.type !== "Klausur");
+    h += '<div class="summary"><div><div class="big">' + wk.filter((e) => e.done).length + " von " + wk.length + ' erledigt</div><div class="sub"><span class="num">' + hrs(sumH(wk)) + '</span> geplant diese Woche</div></div><div>' + (S.week !== 0 ? '<button class="btn" data-act="weekNow">Diese Woche</button>' : "") + '</div><div class="bar"><i style="width:' + (wk.length ? Math.round((wk.filter((e) => e.done).length / wk.length) * 100) : 0) + '%"></i></div></div>';
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(mon, i);
+      const arr = a.filter((e) => e.date === d).sort(byDate);
+      const lbl = esc(fmtShort.format(parse(d))) + (d === t ? ' <span class="day-cap">heute</span>' : "") + (i === 6 ? ' <span class="day-cap">Puffer</span>' : "");
+      h += group(lbl, arr, { cls: d === t ? "today" : "", empty: i === 6 ? "Puffertag." : "Frei." });
+    }
+    return h;
+  }
+
+  function viewModule() {
+    const t = today(); const a = active();
+    const mods = [...S.modules.values()].filter((m) => !m.archived).sort((x, y) => (x.examDate || "9999").localeCompare(y.examDate || "9999") || x.order - y.order);
+    let h = '<div class="cards">';
+    for (const m of mods) {
+      const arr = a.filter((e) => e.moduleId === m.id && e.type !== "Klausur").sort((x, y) => x.done - y.done || byDate(x, y));
+      const done = arr.filter((e) => e.done).length;
+      const pct = arr.length ? Math.round((done / arr.length) * 100) : 0;
+      const exam = m.examDate ? (m.examDate >= t ? "Klausur " + fmtDM.format(parse(m.examDate)) + " · " + relDay(m.examDate) : "Klausur war am " + fmtDM.format(parse(m.examDate))) : "Klausurtermin offen";
+      const open = S.openCards.has(m.id);
+      h += '<div class="card"><button class="card-head" data-act="card" data-mod="' + esc(m.id) + '" aria-expanded="' + open + '" style="--mc:' + esc(m.color) + '"><span><span class="name">' + esc(m.name) + '</span><br><span class="sub">' + esc(exam) + '</span></span><span class="count num">' + done + "/" + arr.length + "<br>" + hrs(sumH(arr.filter((e) => !e.done))) + ' offen</span><span class="bar"><i style="width:' + pct + '%"></i></span></button>' +
+        (open ? (arr.length ? list(arr, { showDate: true }) : '<div class="empty" style="padding:12px 16px">Keine Aufgaben.</div>') : "") + "</div>";
+    }
+    return h + "</div>";
+  }
+
+  function viewKlausuren() {
+    const t = today(); const a = active();
+    let h = '<section class="group"><div class="group-head"><h2>Klausurtermine</h2><span class="meta">' + exams().filter((e) => e.date >= t).length + ' anstehend</span></div><ul class="timeline">';
+    for (const e of exams()) {
+      const m = mod(e.moduleId); const n = diff(t, e.date);
+      h += '<li class="' + (n < 0 ? "past" : "") + '"><span class="when">' + esc(fmtShort.format(parse(e.date))) + '</span><span class="what"><b style="border-left:3px solid ' + esc(m ? m.color : "var(--line)") + ';padding-left:8px">' + esc(m ? m.name : e.title) + '</b><span class="sub" style="padding-left:11px">' + esc(e.time || "Uhrzeit laut Aushang") + '</span></span><span class="left">' + (n < 0 ? "vorbei" : n === 0 ? "heute" : n + " T") + "</span></li>";
+    }
+    h += "</ul></section>";
+    const open = a.filter((e) => (e.type === "Offen" || e.type === "Abgabe") && !e.done).sort(byDate);
+    h += group("Offene Organisation", open, { showDate: true, empty: "Alles geklärt." });
+    return h;
+  }
+
+  function viewArchiv() {
+    const mods = [...S.modules.values()].filter((m) => m.archived);
+    let h = '<div class="notice">Archivierte Module werden nicht eingeplant und zählen nicht als überfällig. BWL 2 und VWL 2 wurden am 13.11.2026 herausgenommen.</div><div class="cards">';
+    for (const m of mods) {
+      const arr = ARCHIVE.concat([...S.entries.values()]).filter((e) => e.moduleId === m.id).sort(byDate);
+      const open = S.openCards.has(m.id);
+      h += '<div class="card"><button class="card-head" data-act="card" data-mod="' + esc(m.id) + '" aria-expanded="' + open + '" style="--mc:' + esc(m.color) + '"><span><span class="name">' + esc(m.name) + '</span><br><span class="sub">archiviert</span></span><span class="count num">' + arr.filter((e) => e.done).length + "/" + arr.length + '</span></button>' + (open ? list(arr, { showDate: true }) : "") + "</div>";
+    }
+    const loose = ARCHIVE.concat([...S.entries.values()]).filter((e) => e.archived && !(mod(e.moduleId) && mod(e.moduleId).archived));
+    if (loose.length) h += '<div class="card"><button class="card-head" data-act="card" data-mod="__loose" style="--mc:var(--line)"><span class="name">Sonstiges</span><span class="count num">' + loose.length + "</span></button>" + (S.openCards.has("__loose") ? list(loose, { showDate: true }) : "") + "</div>";
+    return h + "</div>";
+  }
+
+  function render() {
+    if (!(S.ready.e && S.ready.m)) return;
+    renderHeader();
+    const v = { heute: viewHeute, woche: viewWoche, module: viewModule, klausuren: viewKlausuren, archiv: viewArchiv }[S.view] || viewHeute;
+    const y = window.scrollY;
+    $("#main").innerHTML = '<div style="display:flex;flex-direction:column;gap:18px">' + v() + "</div>";
+    window.scrollTo(0, y);
+    document.querySelectorAll("nav.tabs a").forEach((a) => a.toggleAttribute("aria-current", a.dataset.v === S.view) || (a.dataset.v === S.view && a.setAttribute("aria-current", "page")));
+  }
+
+  // ---------- events ----------
+  document.addEventListener("click", async (ev) => {
+    const el = ev.target.closest("[data-act]"); if (!el) return;
+    const act = el.dataset.act; const li = el.closest("li.item"); const id = li && li.dataset.id; const e = id && S.entries.get(id);
+    if (act === "toggle" && e) { write(id, { done: !e.done, doneAt: !e.done ? new Date().toISOString() : null }); }
+    else if (act === "open" && e) { S.open = S.open === id ? null : id; render(); }
+    else if (act === "today" && e) { write(id, { date: today() }); toast("Auf heute gelegt."); }
+    else if (act === "plus1" && e) { write(id, { date: addDays(e.date || today(), 1) }); toast("Um einen Tag verschoben."); }
+    else if (act === "delete" && e) { S.open = null; write(id, { del: true }); }
+    else if (act === "sync") { openSync(); }
+    else if (act === "lateToToday") {
+      const t = today();
+      const ids = active().filter((x) => !x.done && x.date && x.date < t && x.type !== "Klausur").map((x) => x.id);
+      toast(ids.length + " Aufgaben auf heute gelegt.");
+      writeMany(ids, () => ({ date: t }));
+    }
+    else if (act === "weekPrev") { S.week--; render(); }
+    else if (act === "weekNext") { S.week++; render(); }
+    else if (act === "weekNow") { S.week = 0; render(); }
+    else if (act === "card") { const m = el.dataset.mod; S.openCards.has(m) ? S.openCards.delete(m) : S.openCards.add(m); render(); }
+  });
+  document.addEventListener("change", (ev) => {
+    const el = ev.target; if (el.dataset.act !== "date") return;
+    const id = el.closest("li.item").dataset.id; if (el.value) { write(id, { date: el.value }); toast("Datum geändert."); }
+  });
+
+  // add task sheet
+  $("#fab").addEventListener("click", () => {
+    const mods = [...S.modules.values()].filter((m) => !m.archived).sort((a, b) => a.order - b.order);
+    $("#overlay").innerHTML = '<div class="sheet-bg" data-close="1"><form class="sheet" id="addForm" aria-labelledby="addTitle"><h2 id="addTitle">Aufgabe hinzufügen</h2>' +
+      '<div class="field"><label for="f-title">Was steht an?</label><input type="text" id="f-title" required placeholder="z. B. Mathe 3 Übung 6 nachrechnen"></div>' +
+      '<div class="field"><label for="f-mod">Modul</label><select id="f-mod"><option value="">Allgemein</option>' + mods.map((m) => '<option value="' + esc(m.id) + '">' + esc(m.name) + "</option>").join("") + "</select></div>" +
+      '<div class="field-row"><div class="field"><label for="f-date">Datum</label><input type="date" id="f-date" value="' + today() + '"></div><div class="field"><label for="f-hours">Dauer in Stunden</label><input type="number" id="f-hours" min="0" max="12" step="0.25" value="1"></div></div>' +
+      '<div class="field"><label for="f-type">Art</label><select id="f-type"><option>Aufgabe</option><option>Wiederholung</option><option>Abgabe</option><option value="Offen">Klären</option><option>Klausur</option></select></div>' +
+      '<div class="field"><label for="f-details">Notiz</label><input type="text" id="f-details" placeholder="optional"></div>' +
+      '<div class="actions"><button type="submit" class="btn primary">Hinzufügen</button><button type="button" class="btn" data-close="1">Abbrechen</button></div></form></div>';
+    $("#f-title").focus();
+    $("#addForm").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const id = "user-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const type = $("#f-type").value;
+      const doc = { id, title: $("#f-title").value.trim(), moduleId: $("#f-mod").value, type, date: $("#f-date").value, time: "", priority: type === "Aufgabe" || type === "Wiederholung" ? "Mittel" : "Hoch", details: $("#f-details").value.trim(), done: false, archived: false, hours: Number($("#f-hours").value) || 0, origin: "user" };
+      if (!doc.title) return;
+      delete doc.id;
+      $("#overlay").innerHTML = ""; write(id, doc); toast("Hinzugefügt.");
+    });
+  });
+  $("#overlay").addEventListener("click", (ev) => { if (ev.target.dataset.close) $("#overlay").innerHTML = ""; });
+  document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") $("#overlay").innerHTML = ""; });
+
+  // routing
+  const VIEWS = ["heute", "woche", "module", "klausuren", "archiv"];
+  function route() { const h = location.hash.replace("#", ""); S.view = VIEWS.includes(h) ? h : "heute"; S.open = null; render(); window.scrollTo(0, 0); }
+  window.addEventListener("hashchange", route);
+  route();
+
+  // re-render when the day changes (app left open overnight)
+  let lastDay = today();
+  setInterval(() => { if (today() !== lastDay) { lastDay = today(); render(); } }, 60000);
+
+  // ---------- data ----------
+  function loadPlan(p) {
+    S.modules = new Map(p.modules.map((m) => [m.id, m]));
+    S.base = new Map(p.entries.filter((e) => !e.archived).map((e) => [e.id, e]));
+    ARCHIVE = p.entries.filter((e) => e.archived).map((e) => Object.assign({}, e, { ro: true }));
+    S.ready.e = S.ready.m = true;
+    rebuild(); render();
+  }
+  (async function init() {
+    try { S.ov = JSON.parse(LS.get("lp-ov") || "{}") || {}; } catch (e) { S.ov = {}; }
+    let plan = null;
+    try { const r = await fetch("plan.json", { cache: "no-cache" }); if (r.ok) { plan = await r.json(); LS.set("lp-plan", JSON.stringify(plan)); } } catch (e) {}
+    if (!plan) { try { plan = JSON.parse(LS.get("lp-plan")); } catch (e) {} }
+    if (!plan) { $("#main").innerHTML = '<div class="notice">Der Lernplan konnte nicht geladen werden. Prüfe die Internetverbindung und öffne die App erneut.</div>'; setStatus("Offline", true); return; }
+    loadPlan(plan);
+    sync();
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) { render(); sync(); } });
+    setInterval(() => { if (!document.hidden && LS.get("lp-token")) sync(); }, 60000);
+    if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+  })();
+})();
+</script>
+</body>
+</html>
