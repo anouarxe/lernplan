@@ -150,6 +150,21 @@ input[type="date"], input[type="text"], input[type="number"], select { border: 1
 .field { display: flex; flex-direction: column; gap: 4px; }
 .field label { font-size: .8rem; color: var(--muted); font-weight: 500; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.lib-body { padding: 4px 16px 16px 21px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+.lib-body p { margin: 0; max-width: 62ch; }
+.lib-body p:first-child { margin-top: 12px; }
+.lib-body ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; max-width: 62ch; }
+.lib-body ul:first-child { margin-top: 12px; }
+.lib-ev { font-size: .9rem; color: var(--muted); }
+.lib-src { font-size: .8rem; color: var(--muted); }
+.focus { position: sticky; top: env(safe-area-inset-top); z-index: 4; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: var(--ink); color: var(--surface); border-radius: 12px; padding: 10px 14px; box-shadow: 0 6px 18px rgba(10,14,18,.25); }
+.focus[hidden] { display: none; }
+.focus.break { background: var(--ok); color: #fff; }
+.focus.idle { background: var(--accent); color: #fff; }
+.focus .f-time { font-size: 1.6rem; font-weight: 500; }
+.focus .f-txt { flex: 1; min-width: 120px; font-size: .9rem; overflow-wrap: anywhere; }
+.focus .f-sub { font-size: .78rem; opacity: .8; }
+.focus .btn { color: #1a2024; background: #fff; border-color: transparent; }
 .notice { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; color: var(--muted); }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(150px + env(safe-area-inset-bottom)); background: var(--ink); color: var(--surface); padding: 9px 14px; border-radius: 10px; font-size: .85rem; z-index: 20; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -164,6 +179,7 @@ input[type="date"], input[type="text"], input[type="number"], select { border: 1
     </div>
     <div class="chips" id="examChips"></div>
   </header>
+  <div id="focus" class="focus" hidden></div>
   <main id="main"><div class="notice">Lernplan wird geladen.</div></main>
 </div>
 
@@ -172,7 +188,7 @@ input[type="date"], input[type="text"], input[type="number"], select { border: 1
   <a href="#woche" data-v="woche"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/><path d="M8 4v4M14 10v4M18 16v4"/></svg>Woche</a>
   <a href="#module" data-v="module"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>Module</a>
   <a href="#klausuren" data-v="klausuren"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10.5a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 .5-.5z"/><path d="M14 3.5V8h4M9 13h6M9 17h4"/></svg>Klausuren</a>
-  <a href="#archiv" data-v="archiv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="4.5" width="17" height="4" rx="1"/><path d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5M10 12.5h4"/></svg>Archiv</a>
+  <a href="#bibliothek" data-v="bibliothek"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4.5h4v15H5zM9 4.5h4v15H9z"/><path d="M14.2 6.2l3.8-1 3.4 13.3-3.8 1z"/></svg>Bibliothek</a>
 </div></nav>
 
 <button class="fab" id="fab" aria-label="Aufgabe hinzufügen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg></button>
@@ -182,6 +198,7 @@ input[type="date"], input[type="text"], input[type="number"], select { border: 1
 (function () {
   "use strict";
   let ARCHIVE = [];
+  const LIB = {"src":{"dun":["Dunlosky u. a. 2013, Überblick über zehn Lerntechniken","https://www.psychologicalscience.org/news/releases/which-study-strategies-make-the-grade.html"],"roh":["Rohrer u. a. 2019, Feldstudie zu gemischtem Üben in Mathe","https://ies.ed.gov/use-work/awards/efficacy-study-interleaved-mathematics-practice"],"ren":["Atkinson, Renkl, Merrill 2003, Musterlösungen schrittweise ausblenden","https://asu.elsevierpure.com/en/publications/transitioning-from-studying-examples-to-solving-problems-effects-/"],"rei":["Reisslein u. a. 2006, Ausblenden bei Elektrotechnik-Aufgaben","https://faculty.engineering.asu.edu/mre/wp-content/uploads/sites/31/2020/02/Exp_Rev_LI06.pdf"],"raw":["Rawson und Dunlosky 2022, Successive Relearning","https://journals.sagepub.com/doi/full/10.1177/09637214221100484"],"biw":["Biwer u. a. 2023, feste Pausen gegen Pausen nach Gefühl","https://pubmed.ncbi.nlm.nih.gov/36859717/"],"smi":["Smits u. a. 2025, Pomodoro, Flowtime und freie Pausen","https://pmc.ncbi.nlm.nih.gov/articles/PMC12292963/"],"rui":["Ruiz Pardo und Minda 2022, Replikation der Handy-Studie","https://pubmed.ncbi.nlm.nih.gov/36007374/"]},"p":[{"id":"test","t":"Abfragen statt wiederlesen","k":"Stärkste Technik, für alle Fächer","p":"Hol den Stoff aus dem Kopf, bevor du ins Skript schaust. Das fühlt sich anstrengender an als Lesen und Markieren, bringt aber deutlich mehr.","l":["Rechenfach: Aufgabe ohne Lösung beginnen, erst nach einem ernsthaften Versuch vergleichen.","Lernfach: Skript zuklappen und ein leeres Blatt füllen. Was weiß ich zu diesem Kapitel?","Karteikarten nur als Frage und Antwort, nie als Zusammenfassung zum Durchlesen."],"e":"In einer großen Übersicht über zehn Lerntechniken bekamen nur zwei die höchste Bewertung: Selbsttests und verteiltes Lernen. Markieren und Wiederlesen schnitten schwach ab.","s":["dun"]},{"id":"spacing","t":"Verteilt lernen","k":"Stärkste Technik, steckt schon im Plan","p":"Derselbe Stoff an mehreren Tagen schlägt einen langen Block. Deshalb liegen deine Übungen im Wochenrhythmus und nicht alle kurz vor der Klausur.","l":["Lieber dreimal 30 Minuten über zwei Wochen als einmal 90 Minuten.","Der Sonntagsrückblick ist dafür da: Karten und Fehlerliste der Woche noch einmal abrufen.","Wenn du in Verzug kommst: Aufgaben verschieben, aber nicht auf einen Tag stapeln."],"e":"Verteiltes Lernen wirkt über Altersgruppen, Stoffarten und Prüfungsformen hinweg, auch bei Mathe und Problemlöseaufgaben.","s":["dun"]},{"id":"relearn","t":"Bis es sitzt, und dann noch einmal","k":"Für alles, was beim ersten Mal nicht klappt","p":"Eine Aufgabe ist nicht erledigt, wenn du die Lösung verstanden hast. Sie ist erledigt, wenn du sie an einem späteren Tag allein richtig löst.","l":["Aufgabe nicht geschafft: in der App auf „Saß nicht“ tippen. Sie kommt in 3 Tagen wieder.","Beim zweiten Mal wieder ohne Lösung starten.","Karteikarten nicht zu früh aussortieren. Einmal gewusst heißt noch nicht gelernt."],"e":"In Uni-Kursen lagen die Klausurergebnisse für so gelernte Inhalte etwa eine Notenstufe höher als für Inhalte, die Studierende auf ihre übliche Art gelernt hatten. Wer selbst entschied, wann eine Karte fertig ist, hatte den Vorteil nicht.","s":["raw"]},{"id":"mix","t":"Aufgabentypen mischen","k":"Für Rechenfächer vor der Klausur","p":"In der Klausur steht nicht dabei, welches Verfahren gefragt ist. Übungsblätter verraten es durch die Überschrift. Gemischtes Üben trainiert das Erkennen.","l":["Ab dem zweiten Durchgang: je eine Aufgabe aus drei verschiedenen Blättern statt ein Blatt am Stück.","Vor dem Rechnen in einem Satz aufschreiben: Welcher Aufgabentyp ist das, welches Verfahren passt?","Altklausuren sind von Natur aus gemischt. Deshalb liegen sie am Ende."],"e":"In einer Feldstudie mit 54 Schulklassen erreichte die Gruppe mit gemischten Aufgaben einen Monat später 61 Prozent, die Vergleichsgruppe 38 Prozent. Einschränkung: Das waren Siebtklässler, und gemischtes Üben dauert länger.","s":["roh","dun"]},{"id":"examples","t":"Erst Musterlösung, dann Lücken, dann allein","k":"Für neue Aufgabentypen","p":"Bei einem neuen Thema ist stundenlanges Herumprobieren ineffizient. Eine durchgerechnete Lösung zu studieren bringt am Anfang mehr. Sobald du den Typ kennst, kehrt sich das um.","l":["Neues Thema: eine Musterlösung Schritt für Schritt nachvollziehen.","Zweite Aufgabe: Lösung abdecken und nur die letzten Schritte selbst machen, dann immer mehr.","Thema bekannt: keine Musterlösung mehr vorab, sonst lernst du nur nachvollziehen."],"e":"Studien mit Ingenieurstudierenden an Schaltungsaufgaben zeigen: Einsteiger lernen mit Beispielen besser, bei Fortgeschrittenen verschwindet der Vorteil.","s":["rei","ren"]},{"id":"explain","t":"Jeden Schritt begründen","k":"Gegen Rechnen nach Schema","p":"Frag dich bei jedem Schritt: Warum darf ich das? Welches Gesetz, welche Annahme steckt dahinter?","l":["Bei Musterlösungen die Begründung an den Rand schreiben, die im Skript fehlt.","Bei Lernfächern: Warum ist das so? Wozu braucht man das? Was wäre die Alternative?","Wenn du einen Schritt nicht begründen kannst, gehört er in die Fehlerliste."],"e":"Selbsterklären und Warum-Fragen wurden in der Übersicht als mittelstark eingestuft, also nützlich, aber weniger breit belegt als Selbsttests.","s":["dun"]}],"f":[{"id":"breaks","t":"Feste Blöcke mit geplanten Pausen","k":"Hilft vor allem beim Anfangen","p":"Starte den Fokus-Timer auf der Heute-Seite oder direkt in einer Aufgabe, arbeite an genau einer Aufgabe und mach dann eine kurze Pause weg vom Bildschirm. 25 und 5 Minuten sind ein Startwert, bei Rechenaufgaben passen oft 45 und 10 besser.","l":["Vor dem Start aufschreiben, was am Ende des Blocks fertig sein soll.","Pause wirklich machen: aufstehen, trinken, kein Handy.","Wenn du gerade im Fluss bist, darfst du den Timer ignorieren."],"e":"Die Belege sind gemischt. In einer Studie waren Studierende mit festen Pausen konzentrierter und weniger müde als mit Pausen nach Gefühl. Eine neuere Studie fand das Gegenteil bei der Müdigkeit, und in beiden wurde am Ende gleich viel geschafft. Nimm, was für dich funktioniert.","s":["biw","smi"]},{"id":"phone","t":"Handy außer Reichweite","k":"Wenig Aufwand, Nutzen plausibel","p":"Leg das Handy beim Lernen in einen anderen Raum oder in die Tasche und stell Mitteilungen stumm. Wenn du diese App zum Abhaken brauchst, nimm sie am Mac.","l":["Fokus-Modus am iPhone für Lernzeiten einrichten.","Am Mac nur die Fenster offen lassen, die du für die Aufgabe brauchst."],"e":"Ehrlich eingeordnet: Die bekannte Studie, nach der schon ein ausgeschaltetes Handy auf dem Tisch die Denkleistung senkt, ließ sich in einer direkten Wiederholung nicht bestätigen. Der Tipp bleibt sinnvoll, weil Mitteilungen und der schnelle Griff zum Handy real unterbrechen. Das ist meine Einschätzung, kein Studienergebnis.","s":["rui"]},{"id":"start","t":"Den Einstieg klein machen","k":"Praxis-Tipp ohne Studienbeleg","p":"Die meiste Lernzeit geht vor dem Anfangen verloren. Mach den ersten Schritt lächerlich klein.","l":["Abends die Aufgabe für morgen aufschlagen und das Blatt hinlegen.","Feste Uhrzeit und fester Ort für den ersten Block des Tages.","Nur die erste Teilaufgabe vornehmen. Weitermachen ergibt sich meist von selbst.","Schwierigstes Fach zuerst, solange du frisch bist."],"e":"Diese Punkte stammen aus Erfahrung und nicht aus der Recherche. Probier sie aus und behalte, was hilft.","s":[]},{"id":"errors","t":"Fehlerliste führen","k":"Macht aus Fehlern Lernstoff","p":"Eine Seite pro Modul. Jeder Fehler bekommt eine Zeile: Was war falsch, warum, wie erkenne ich es nächstes Mal?","l":["Rechenfehler getrennt von Verständnisfehlern notieren.","Bei Rechenfehlern nach Mustern suchen, etwa Brüche, Potenzen, Vorzeichen, Einheiten.","Die Liste ist der Stoff für Sonntagsrückblick und Abschlusswiederholung."],"e":"Eine eigene Studie dazu habe ich nicht gesucht. Die Liste ist das Werkzeug, mit dem du Selbsttests und erneutes Lernen gezielt auf deine Schwächen richtest.","s":["raw"]}],"m":[{"mod":"informatik","k":"Praktische Prüfung am Rechner","l":["Jede Katalogaufgabe selbst tippen, kompilieren und laufen lassen. Lesen der Musterlösung zählt nicht.","Mit den mitgelieferten Testdateien prüfen, ob dein Programm stimmt.","Compilerfehler in die Fehlerliste: Meldung, Ursache, Korrektur.","Zeiger und malloc auf Papier skizzieren: Was zeigt wohin, wem gehört der Speicher?","Letzte Woche: Aufgaben mit Uhr neu schreiben, ohne in alte Lösungen zu sehen."],"use":["test","examples","relearn"]},{"mod":"bwl-3","k":"Rechenfach: Investition und Finanzierung","l":["Neun Aufgabenblätter mit Lösung sind dein Kernstoff. Jedes Blatt erst ohne Lösung rechnen.","Formeln aus dem Kopf aufschreiben, bevor du rechnest: Barwert, Annuität, ewige Rente, Anleihenpreis, Dividend-Discount-Model, WACC.","Zu jeder Formel einen Satz: Wann benutze ich sie, was nehme ich dabei an?","60 Minuten Klausur: gemischte Aufgaben mit Uhr üben, Taschenrechner sicher bedienen."],"use":["test","mix","relearn"]},{"mod":"mathe-3","k":"Rechenfach, Verfahren von Hand","l":["Jedes Verfahren einmal komplett von Hand durchrechnen: LR-Zerlegung, Iterationsverfahren, CG, Newton, Fourier.","Pro Verfahren eine Karte: Wann anwendbar, Schritte, typische Falle, Konvergenz.","Die Übungsblätter nennen oben die Sätze und Definitionen. Diese aus dem Kopf formulieren können.","Fünf Altklausuren ab Februar mit Uhr."],"use":["examples","mix","relearn"]},{"mod":"werkstoffkunde","k":"Lernfach, 393 Seiten Skript","l":["Kapitelweise: lesen, zuklappen, Diagramme aus dem Kopf zeichnen. Allen voran das Eisen-Kohlenstoff-Diagramm.","Je Kapitel zehn Karteikarten mit Frage und Antwort.","Zusammenhang immer mitlernen: Gefüge, Eigenschaft, Anwendung.","Prüfverfahren und Wärmebehandlungen als Vergleichstabelle.","Klausur liegt einen Tag vor Thermodynamik: Stoff muss am 20.02. stehen."],"use":["test","explain","spacing"]},{"mod":"thermodynamik","k":"Zwei Teile: Kurzfragen ohne, Rechnen mit Hilfsmitteln","l":["Kurzfragen bringen ein Drittel der Punkte und sind ohne Hilfsmittel. Die 155 Beispielfragen wie Karteikarten abfragen, verteilt über Wochen.","Rechenteil ist mit Skript: Du musst wissen, wo etwas steht. Skript mit Klebezetteln vorbereiten.","Immer gleiches Schema: System abgrenzen, Skizze, gegeben und gesucht, Annahmen, Bilanz, erst dann Zahlen.","Ergebnis auf Plausibilität prüfen. Offensichtlich unsinnige Lösungen kosten laut Aufgabensammlung Punkte."],"use":["test","spacing","explain"]},{"mod":"diskrete-steuerung-regelung","k":"Drei Blöcke: Automaten, Petri-Netze, zeitdiskrete Regelung","l":["Aufgabensammlung mit 33 Aufgaben und Lösungen: Aufgaben 1 bis 6 Automaten, 7 bis 17 Petri-Netze, 18 bis 33 Regelung und Zustandsraum.","Graphen und Netze selbst zeichnen, nie nur die Lösung ansehen.","Erlaubt ist ein handbeschriebenes A4-Blatt. Früh schreiben und in jeder Altklausur benutzen.","Kein Taschenrechner: Bruchrechnung und Polynome von Hand üben.","Klausur um 18 Uhr: mindestens eine der vier Altklausuren abends rechnen."],"use":["examples","test","mix"]},{"mod":"fertigungstechnik","k":"Lernfach mit vielen Verfahren","l":["Vergleichstabelle je Verfahrensgruppe: Prinzip, Werkstoffe, Genauigkeit, Vor- und Nachteile, typisches Bauteil.","Tabelle aus dem Kopf neu aufbauen, nicht abschreiben.","Skizzen der Verfahren beschriften können.","Warum-Fragen stellen: Warum dieses Verfahren für dieses Bauteil?"],"use":["test","explain","spacing"]},{"mod":"mathe-2","k":"Rechenfach, läuft dieses Semester mit","l":["Wöchentliche Blätter im Takt halten. Sternaufgaben sind Vertiefung und für die Großklausur zu schwer.","Ergebnisse müssen exakt und vollständig gekürzt sein, Rechenweg zählt. Jeden Umformungsschritt einzeln untereinander schreiben.","Alte Kurzklausuren sind ideale 30-Minuten-Tests zwischendurch.","Drei Großklausuren mit Lösung in der letzten Woche unter Klausurbedingungen."],"use":["test","relearn","mix"]},{"mod":"produktionssystematik","k":"Lernfach mit Rechenanteil","l":["Neun Foliensätze M01 bis M09: je Modul ein leeres Blatt aus dem Kopf füllen.","Kennzahlen (M07) und Investitionsrechnung (M09) an den Übungen 3 und 4 selbst rechnen.","Begriffe und Methoden als Karteikarten, früh anfangen.","Fällt mit Mathe 2 auf einen Tag: Stoff muss am 17.03. stehen."],"use":["test","spacing","relearn"]},{"mod":"elektrische-magnetische-felder","k":"150 Minuten, Kurzaufgaben plus große Aufgaben","l":["Vor jeder Rechnung das Feldbild skizzieren und die Symmetrie benennen.","14 Altklausuren mit Kurzlösung liegen im Ordner ET2. Das ist dein wichtigstes Material.","Nur Endergebnisse in den Lösungsfeldern zählen: sauber zusammenfassen, Einheiten angeben.","Erlaubt ist ein handbeschriebenes A4-Formelblatt zusätzlich zur Institutsformelsammlung. Nach drei Altklausuren schreiben."],"use":["explain","mix","relearn"]}]};
   const S = { entries: new Map(), modules: new Map(), view: "heute", week: 0, open: null, openCards: new Set(), ready: { e: false, m: false }, base: new Map(), ov: {} };
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -299,6 +316,49 @@ input[type="date"], input[type="text"], input[type="number"], select { border: 1
     if (off) off.addEventListener("click", () => { LS.del("lp-token"); LS.del("lp-gist"); $("#overlay").innerHTML = ""; sync(); });
   }
 
+  // ---------- focus timer (per device, not synced) ----------
+  const FOC = { s: null, ac: null, key: "" };
+  try { FOC.s = JSON.parse(LS.get("lp-focus") || "null"); } catch (e) {}
+  function focSave() { if (FOC.s) LS.set("lp-focus", JSON.stringify(FOC.s)); else LS.del("lp-focus"); }
+  function focStart(work, brk, title) {
+    try { FOC.ac = FOC.ac || new (window.AudioContext || window.webkitAudioContext)(); FOC.ac.resume(); } catch (e) {}
+    FOC.s = { mode: "work", end: Date.now() + work * 60000, work, brk, title: title || "" };
+    LS.set("lp-focus-preset", work + "/" + brk); focSave(); focTick(); window.scrollTo(0, 0);
+  }
+  function focBeep() {
+    try {
+      const ac = FOC.ac; if (ac) [0, 0.35, 0.7].forEach((d) => {
+        const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = 880; o.connect(g); g.connect(ac.destination);
+        g.gain.setValueAtTime(0.15, ac.currentTime + d); g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + d + 0.25);
+        o.start(ac.currentTime + d); o.stop(ac.currentTime + d + 0.26);
+      });
+    } catch (e) {}
+    try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {}
+  }
+  function focTick() {
+    const el = $("#focus"), s = FOC.s;
+    if (!s) { el.hidden = true; FOC.key = ""; return; }
+    if (s.mode !== "idle" && s.end - Date.now() <= 0) {
+      if (s.mode === "work") {
+        const k = "lp-focus-" + today(); LS.set(k, String((Number(LS.get(k)) || 0) + 1));
+        if (Date.now() - s.end < s.brk * 60000) { s.mode = "break"; s.end += s.brk * 60000; } else s.mode = "idle";
+      } else s.mode = "idle";
+      focBeep(); focSave();
+    }
+    const t = s.mode === "idle" ? 0 : Math.max(0, Math.ceil((s.end - Date.now()) / 1000));
+    const time = pad(Math.floor(t / 60)) + ":" + pad(t % 60);
+    const n = Number(LS.get("lp-focus-" + today())) || 0;
+    const key = s.mode + "|" + n + "|" + s.title;
+    if (key !== FOC.key) {
+      FOC.key = key; el.hidden = false; el.className = "focus " + s.mode;
+      const lbl = s.mode === "work" ? "Fokus" : s.mode === "break" ? "Pause" : "Pause vorbei";
+      el.innerHTML = '<span class="f-time num" id="focTime"></span><span class="f-txt"><b>' + lbl + "</b>" + (s.title ? " · " + esc(s.title) : "") + '<br><span class="f-sub">' + n + (n === 1 ? " Block" : " Blöcke") + " heute geschafft</span></span>" +
+        (s.mode === "idle" ? '<button class="btn" data-act="focNext">Nächster Block</button>' : "") + '<button class="btn" data-act="focStop">' + (s.mode === "idle" ? "Fertig" : "Beenden") + "</button>";
+    }
+    $("#focTime").textContent = time;
+  }
+  setInterval(focTick, 1000);
+
   let toastT;
   function toast(msg) {
     clearTimeout(toastT);
@@ -335,9 +395,12 @@ input[type="date"], input[type="text"], input[type="number"], select { border: 1
     if (open) {
       html += '<div class="detail">' + ((e.details || hint(e)) ? "<p>" + esc(e.details || hint(e)) + "</p>" : "") +
         '<div class="actions">' +
+        (e.type === "Aufgabe" && !e.done && !e.ro ? '<button class="btn" data-act="again">Saß nicht: in 3 Tagen wiederholen</button>' : "") +
+        (e.type !== "Klausur" && !e.done && !e.ro ? '<button class="btn primary" data-act="focTask">Fokus starten</button>' : "") +
         (e.type !== "Klausur" && !e.done ? '<button class="btn" data-act="today">Auf heute</button><button class="btn" data-act="plus1">Einen Tag später</button>' : "") +
         '<label class="sub" for="d-' + esc(e.id) + '">Datum</label><input type="date" id="d-' + esc(e.id) + '" data-act="date" value="' + esc(e.date || "") + '">' +
         (e.origin === "user" ? '<button class="btn danger" data-act="delete">Löschen</button>' : "") +
+        (LIB.m.some((x) => x.mod === e.moduleId) ? '<a href="#bibliothek" data-act="lib" data-mod="' + esc(e.moduleId) + '" style="font-size:.85rem">Lernstrategie</a>' : "") +
         "</div></div>";
     }
     return html + "</li>";
@@ -380,6 +443,7 @@ input[type="date"], input[type="text"], input[type="number"], select { border: 1
     const doneH = sumH(todOpen.filter((e) => e.done)), allH = sumH(todOpen);
     const pct = allH ? Math.round((doneH / allH) * 100) : 0;
     let h = '<div class="summary"><div><div class="big">' + (todOpen.length ? todOpen.filter((e) => e.done).length + " von " + todOpen.length + " erledigt" : "Heute ist nichts geplant") + '</div><div class="sub">' + (todOpen.length ? '<span class="num">' + hrs0(doneH) + "</span> von <span class=\"num\">" + hrs(allH) + "</span> Lernzeit" : (parse(t).getDay() === 0 ? "Sonntag ist Puffertag." : "Nimm dir etwas aus „Als Nächstes“ vor.")) + '</div></div><div class="num" style="font-size:1.4rem">' + pct + '%</div><div class="bar"><i style="width:' + pct + '%"></i></div></div>';
+    h += '<div class="actions"><span class="sub">Fokus-Timer:</span><button class="btn" data-act="foc" data-w="25" data-b="5">25 + 5 min</button><button class="btn" data-act="foc" data-w="45" data-b="10">45 + 10 min</button></div>';
     if (late.length) h += group("Überfällig", late, { cls: "late", showDate: true, inLate: true, meta: late.length + " · " + hrs(sumH(late)) + " ", action: ' <button class="link-btn" data-act="lateToToday">Alle auf heute</button>' });
     h += group("Heute", tod, { cls: "today", empty: "Keine Aufgaben für heute." });
     for (let i = 1; i <= 3; i++) {
@@ -419,9 +483,9 @@ input[type="date"], input[type="text"], input[type="number"], select { border: 1
       const exam = m.examDate ? (m.examDate >= t ? "Klausur " + fmtDM.format(parse(m.examDate)) + " · " + relDay(m.examDate) : "Klausur war am " + fmtDM.format(parse(m.examDate))) : "Klausurtermin offen";
       const open = S.openCards.has(m.id);
       h += '<div class="card"><button class="card-head" data-act="card" data-mod="' + esc(m.id) + '" aria-expanded="' + open + '" style="--mc:' + esc(m.color) + '"><span><span class="name">' + esc(m.name) + '</span><br><span class="sub">' + esc(exam) + '</span></span><span class="count num">' + done + "/" + arr.length + "<br>" + hrs(sumH(arr.filter((e) => !e.done))) + ' offen</span><span class="bar"><i style="width:' + pct + '%"></i></span></button>' +
-        (open ? (arr.length ? list(arr, { showDate: true }) : '<div class="empty" style="padding:12px 16px">Keine Aufgaben.</div>') : "") + "</div>";
+        (open ? (LIB.m.some((x) => x.mod === m.id) ? '<div style="padding:10px 16px 0"><a href="#bibliothek" data-act="lib" data-mod="' + esc(m.id) + '">Lernstrategie für dieses Modul</a></div>' : "") + (arr.length ? list(arr, { showDate: true }) : '<div class="empty" style="padding:12px 16px">Keine Aufgaben.</div>') : "") + "</div>";
     }
-    return h + "</div>";
+    return h + '</div><p class="sub" style="margin:0"><a href="#archiv">Archivierte Module ansehen</a></p>';
   }
 
   function viewKlausuren() {
@@ -450,10 +514,31 @@ input[type="date"], input[type="text"], input[type="number"], select { border: 1
     return h + "</div>";
   }
 
+  function libCard(key, title, kicker, body, color) {
+    const open = S.openCards.has(key);
+    return '<div class="card"><button class="card-head" data-act="card" data-mod="' + esc(key) + '" aria-expanded="' + open + '" style="--mc:' + esc(color || "var(--accent)") + '"><span><span class="name">' + esc(title) + '</span><br><span class="sub">' + esc(kicker) + '</span></span><span class="count">' + (open ? "–" : "+") + "</span></button>" + (open ? '<div class="lib-body">' + body + "</div>" : "") + "</div>";
+  }
+  const libSrc = (keys) => keys.length ? '<p class="lib-src">Quelle: ' + keys.map((k) => '<a href="' + esc(LIB.src[k][1]) + '" target="_blank" rel="noopener">' + esc(LIB.src[k][0]) + "</a>").join(" · ") + "</p>" : "";
+  const libUl = (l) => "<ul>" + l.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ul>";
+  function libTech(x) { return libCard("lib-" + x.id, x.t, x.k, "<p>" + esc(x.p) + "</p>" + libUl(x.l) + '<p class="lib-ev"><b>Was die Forschung sagt:</b> ' + esc(x.e) + "</p>" + libSrc(x.s)); }
+  function viewBibliothek() {
+    const all = LIB.p.concat(LIB.f);
+    let h = '<div class="notice">Nachschlagen, wie du lernst. Die Kurzfassung: abfragen statt lesen, über Tage verteilen, Fehler gezielt wiederholen. Bei jeder Technik steht, wie gut sie belegt ist.</div>';
+    h += '<section class="group"><div class="group-head"><h2>Je Modul</h2><span class="meta">' + LIB.m.length + ' Module</span></div><div class="cards" style="margin-top:10px">';
+    for (const x of LIB.m) {
+      const m = mod(x.mod); if (!m || m.archived) continue;
+      const use = x.use.map((id) => all.find((t) => t.id === id)).filter(Boolean);
+      h += libCard("libm-" + x.mod, m.name, x.k, libUl(x.l) + '<p class="lib-ev"><b>Passende Techniken:</b> ' + use.map((t) => '<a href="#bibliothek" data-act="libopen" data-key="lib-' + esc(t.id) + '">' + esc(t.t) + "</a>").join(" · ") + '</p><p class="lib-src">Die Tipps beruhen auf deinen Unterlagen im Ordner WiSe 26/27 und auf den Techniken weiter unten.</p>', m.color);
+    }
+    h += '</div></section><section class="group"><div class="group-head"><h2>Lerntechniken</h2><span class="meta">nach Wirkung sortiert</span></div><div class="cards" style="margin-top:10px">' + LIB.p.map(libTech).join("") + "</div></section>";
+    h += '<section class="group"><div class="group-head"><h2>Fokus und Arbeitsweise</h2><span class="meta"></span></div><div class="cards" style="margin-top:10px">' + LIB.f.map(libTech).join("") + "</div></section>";
+    return h;
+  }
+
   function render() {
     if (!(S.ready.e && S.ready.m)) return;
     renderHeader();
-    const v = { heute: viewHeute, woche: viewWoche, module: viewModule, klausuren: viewKlausuren, archiv: viewArchiv }[S.view] || viewHeute;
+    const v = { heute: viewHeute, woche: viewWoche, module: viewModule, klausuren: viewKlausuren, archiv: viewArchiv, bibliothek: viewBibliothek }[S.view] || viewHeute;
     const y = window.scrollY;
     $("#main").innerHTML = '<div style="display:flex;flex-direction:column;gap:18px">' + v() + "</div>";
     window.scrollTo(0, y);
@@ -470,6 +555,19 @@ input[type="date"], input[type="text"], input[type="number"], select { border: 1
     else if (act === "plus1" && e) { write(id, { date: addDays(e.date || today(), 1) }); toast("Um einen Tag verschoben."); }
     else if (act === "delete" && e) { S.open = null; write(id, { del: true }); }
     else if (act === "sync") { openSync(); }
+    else if (act === "foc") { focStart(Number(el.dataset.w), Number(el.dataset.b), ""); }
+    else if (act === "focTask" && e) { const p = (LS.get("lp-focus-preset") || "25/5").split("/"); const m = mod(e.moduleId); focStart(Number(p[0]) || 25, Number(p[1]) || 5, (m ? m.code + " " : "") + e.title); }
+    else if (act === "focNext" && FOC.s) { focStart(FOC.s.work, FOC.s.brk, FOC.s.title); }
+    else if (act === "focStop") { FOC.s = null; focSave(); focTick(); }
+    else if (act === "lib") { S.openCards.add("libm-" + el.dataset.mod); }
+    else if (act === "libopen") { ev.preventDefault(); S.openCards.add(el.dataset.key); render(); const t = document.querySelector('[data-mod="' + el.dataset.key + '"]'); if (t) t.scrollIntoView({ block: "start", behavior: "smooth" }); }
+    else if (act === "again" && e) {
+      const d = addDays(today(), 3), nid = "user-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      S.open = null;
+      S.ov[nid] = { title: "Wiederholen: " + e.title.replace(/^Wiederholen: /, ""), moduleId: e.moduleId || "", type: "Aufgabe", date: d, time: "", details: "Beim letzten Mal nicht sicher gelöst. Ohne Lösung neu rechnen. Klappt es wieder nicht, erneut auf „Saß nicht“ tippen.", done: false, hours: Math.max(0.5, Math.round((Number(e.hours) || 1) * 2) / 4), origin: "user", u: Date.now() };
+      write(id, { done: true, doneAt: new Date().toISOString() });
+      toast("Erledigt. Wiederholung am " + fmtShort.format(parse(d)) + " eingeplant.");
+    }
     else if (act === "lateToToday") {
       const t = today();
       const ids = active().filter((x) => !x.done && x.date && x.date < t && x.type !== "Klausur").map((x) => x.id);
@@ -511,7 +609,7 @@ input[type="date"], input[type="text"], input[type="number"], select { border: 1
   document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") $("#overlay").innerHTML = ""; });
 
   // routing
-  const VIEWS = ["heute", "woche", "module", "klausuren", "archiv"];
+  const VIEWS = ["heute", "woche", "module", "klausuren", "archiv", "bibliothek"];
   function route() { const h = location.hash.replace("#", ""); S.view = VIEWS.includes(h) ? h : "heute"; S.open = null; render(); window.scrollTo(0, 0); }
   window.addEventListener("hashchange", route);
   route();
@@ -528,6 +626,7 @@ input[type="date"], input[type="text"], input[type="number"], select { border: 1
     S.ready.e = S.ready.m = true;
     rebuild(); render();
   }
+  focTick();
   (async function init() {
     try { S.ov = JSON.parse(LS.get("lp-ov") || "{}") || {}; } catch (e) { S.ov = {}; }
     let plan = null;
